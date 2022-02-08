@@ -81,8 +81,9 @@
                   size="sm"
                   flat
                   round
-                  color="grey"
-                  icon="far fa-heart" />
+                  @click="toggleLiked(qweet)"
+                  :color="qweet.liked ? 'pink' : 'grey'"
+                  :icon="qweet.liked ? 'fas fa-heart' : 'far fa-heart'" />
                 <q-btn
                   @click="removeQweet(qweet)"
                   size="sm"
@@ -113,6 +114,7 @@ import {
   orderBy, 
   doc, 
   deleteDoc, 
+  updateDoc,
   addDoc 
 } from "firebase/firestore";
 
@@ -125,12 +127,16 @@ export default defineComponent({
       newQweetContent: '',
       qweets: [
         // {
+        //   id: 'id1',
         //   content: '"To be beautiful means to be yourself. You dont need to be accepted by others. You need to accept yourself."',
-        //   date: 1643372713813
+        //   date: 1643372713813,
+        //   liked: false
         // },
         // {
+        //   id: 'id2',
         //   content: '"Divide each difficulty into as many parts as is feasible and necessary to resolve it."',
-        //   date: 1643372822530
+        //   date: 1643372822530,
+        //   liked: true
         // }
       ]
     }
@@ -139,15 +145,21 @@ export default defineComponent({
     addNewQweet() {
       let newQweet = {
         content: this.newQweetContent,
-        date: Date.now()
+        date: Date.now(),
+        liked: false
       }
 
-      this.addToFirebase(newQweet)
+      this.updateFirebase(newQweet, 'add')
       this.newQweetContent = '' 
     },
 
     removeQweet(qweet) {
       this.updateFirebase(qweet, 'remove')
+    },
+
+    toggleLiked(qweet) {
+      qweet.liked = !qweet.liked
+      this.updateFirebase(qweet, 'update')
     },
 
     relativeDate(value) {
@@ -161,6 +173,13 @@ export default defineComponent({
         case 'add':
           console.log('adding')
           await addDoc(collection(db, collectionName), qweet)
+          break;
+        case 'update':
+          await updateDoc(doc(db, collectionName, qweet.id), qweet)
+          // const qweetDocument = doc(db, collectionName, qweet.id)
+          // await updateDoc(qweetDocument, {
+          //   liked: qweet.liked
+          // });
           break;
         case 'remove':
           console.log('removing')
@@ -182,10 +201,12 @@ export default defineComponent({
               this.qweets.unshift(qweetUpdate)
               break
             case 'modified':
+              let modifiedIndex = this.qweets.findIndex(candidate => candidate.id === qweetUpdate.id)
+              Object.assign(this.qweets[modifiedIndex], qweetUpdate)
               break 
             case 'removed':
-              let index = this.qweets.findIndex(candidate => candidate.id === qweetUpdate.id)
-              this.qweets.splice(index, 1)
+              let removedndex = this.qweets.findIndex(candidate => candidate.id === qweetUpdate.id)
+              this.qweets.splice(removedndex, 1)
               break
             default:
           }
